@@ -1,0 +1,417 @@
+### ============================================================
+### SGCAE - Sistema de Gestión y Control de Acceso de Empleados
+### Archivo de evidencias HTTP
+### Compatible con: VS Code REST Client | Visual Studio 2022+
+###
+### Orden de ejecución recomendado:
+###   1. RF-06 → Crear puntos de acceso
+###   2. RF-01 → Crear empleados
+###   3. RF-02 → Asignar / bloquear / revocar credenciales
+###   4. RF-03 → Registrar intentos de acceso
+###   5. RF-04 → Consultar historial paginado
+###
+### NOTA: Actualizar los IDs (@variables) con los valores reales
+### devueltos por cada solicitud POST antes de ejecutar las
+### siguientes peticiones que los referencian.
+### ============================================================
+
+@baseUrl     = http://localhost:5158
+@httpsUrl    = https://localhost:7165
+@contentType = application/json
+
+### ────────────────────────────────────────────────────────────
+###  RF-06 | Administración de puntos de acceso
+### ────────────────────────────────────────────────────────────
+
+### RF-06-01 | Crear punto de acceso: Recepción Principal
+# @name createAccessPoint_Recepcion
+POST {{baseUrl}}/api/access-points
+Content-Type: {{contentType}}
+
+{
+  "code": "REC-01",
+  "name": "Recepción Principal",
+  "locationDescription": "Entrada principal edificio A"
+}
+
+###
+
+### RF-06-02 | Crear punto de acceso: Bodega Central
+# @name createAccessPoint_Bodega
+POST {{baseUrl}}/api/access-points
+Content-Type: {{contentType}}
+
+{
+  "code": "BOD-01",
+  "name": "Bodega Central",
+  "locationDescription": "Nave logística 1"
+}
+
+###
+
+### RF-06-03 | Crear punto de acceso: Parqueadero
+POST {{baseUrl}}/api/access-points
+Content-Type: {{contentType}}
+
+{
+  "code": "PRK-01",
+  "name": "Parqueadero",
+  "locationDescription": "Acceso vehicular subterráneo"
+}
+
+###
+
+### RF-06-04 | Consultar todos los puntos de acceso
+GET {{baseUrl}}/api/access-points
+Accept: {{contentType}}
+
+###
+
+### RF-06-05 | Inhabilitar el punto de acceso BOD-01
+### → Reemplazar con el ID real devuelto en RF-06-02
+@accessPointBodegaId = 00000000-0000-0000-0000-000000000001
+PATCH {{baseUrl}}/api/access-points/{{accessPointBodegaId}}/toggle-status
+Content-Type: {{contentType}}
+
+{
+  "enable": false
+}
+
+###
+
+### RF-06-06 | Habilitar nuevamente el punto BOD-01
+PATCH {{baseUrl}}/api/access-points/{{accessPointBodegaId}}/toggle-status
+Content-Type: {{contentType}}
+
+{
+  "enable": true
+}
+
+###
+
+### ────────────────────────────────────────────────────────────
+###  RF-01 | Gestión de empleados
+### ────────────────────────────────────────────────────────────
+
+### RF-01-01 | Registrar empleado activo: Juan Pérez
+# @name createEmployee_Juan
+POST {{baseUrl}}/api/employees
+Content-Type: {{contentType}}
+
+{
+  "documentNumber": "10101001",
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "email": "juan.perez@empresa.com",
+  "jobTitle": "Operador Logístico",
+  "department": "Operaciones"
+}
+
+###
+
+### RF-01-02 | Registrar empleado: María López (será desactivada)
+# @name createEmployee_Maria
+POST {{baseUrl}}/api/employees
+Content-Type: {{contentType}}
+
+{
+  "documentNumber": "20202002",
+  "firstName": "María",
+  "lastName": "López",
+  "email": "maria.lopez@empresa.com",
+  "jobTitle": "Analista",
+  "department": "Administración"
+}
+
+###
+
+### RF-01-03 | Listar todos los empleados
+GET {{baseUrl}}/api/employees
+Accept: {{contentType}}
+
+###
+
+### RF-01-04 | Consultar empleado por ID
+### → Reemplazar con el ID real devuelto en RF-01-01 y RF-01-02
+@employeeJuanId  = 00000000-0000-0000-0000-000000000002
+@employeeMariaId = 00000000-0000-0000-0000-000000000003
+GET {{baseUrl}}/api/employees/{{employeeJuanId}}
+Accept: {{contentType}}
+
+###
+
+### RF-01-05 | Actualizar datos del empleado Juan Pérez
+PUT {{baseUrl}}/api/employees/{{employeeJuanId}}
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Juan Carlos",
+  "lastName": "Pérez García",
+  "email": "juancarlos.perez@empresa.com",
+  "jobTitle": "Supervisor Logístico",
+  "department": "Operaciones"
+}
+
+###
+
+### RF-01-06 | Desactivar empleado María López
+### Resultado esperado: 204 No Content (o 200 OK)
+PATCH {{baseUrl}}/api/employees/{{employeeMariaId}}/deactivate
+
+###
+
+### RF-01-07 | Verificar que María López aparece como Inactive
+GET {{baseUrl}}/api/employees/{{employeeMariaId}}
+Accept: {{contentType}}
+
+###
+
+### ────────────────────────────────────────────────────────────
+###  RF-02 | Gestión de credenciales RFID
+### ────────────────────────────────────────────────────────────
+
+### RF-02-01 | Asignar credencial activa a Juan Pérez
+POST {{baseUrl}}/api/credentials/assign
+Content-Type: {{contentType}}
+
+{
+  "code": "CARD-ACT-001",
+  "employeeId": "{{employeeJuanId}}"
+}
+
+###
+
+### RF-02-02 | Asignar segunda credencial a Juan (luego será bloqueada)
+POST {{baseUrl}}/api/credentials/assign
+Content-Type: {{contentType}}
+
+{
+  "code": "CARD-BLK-002",
+  "employeeId": "{{employeeJuanId}}"
+}
+
+###
+
+### RF-02-03 | Asignar credencial a María López (empleada inactiva)
+POST {{baseUrl}}/api/credentials/assign
+Content-Type: {{contentType}}
+
+{
+  "code": "CARD-INA-004",
+  "employeeId": "{{employeeMariaId}}"
+}
+
+###
+
+### RF-02-04 | Consultar credencial por código
+GET {{baseUrl}}/api/credentials/CARD-ACT-001
+Accept: {{contentType}}
+
+###
+
+### RF-02-05 | Consultar credenciales del empleado Juan Pérez
+GET {{baseUrl}}/api/credentials/employee/{{employeeJuanId}}
+Accept: {{contentType}}
+
+###
+
+### RF-02-06 | Bloquear credencial CARD-BLK-002
+### Resultado esperado: 200 OK con Status = "Blocked"
+PATCH {{baseUrl}}/api/credentials/CARD-BLK-002/block
+Content-Type: {{contentType}}
+
+{
+  "reason": "Extravío de credencial reportado por el empleado"
+}
+
+###
+
+### RF-02-07 | Verificar estado Blocked de la credencial
+GET {{baseUrl}}/api/credentials/CARD-BLK-002
+Accept: {{contentType}}
+
+###
+
+### RF-02-08 | Revocar credencial definitivamente (estado terminal)
+### Resultado esperado: 200 OK con Status = "Revoked"
+PATCH {{baseUrl}}/api/credentials/CARD-BLK-002/revoke
+Content-Type: {{contentType}}
+
+{
+  "reason": "Pérdida permanente confirmada por Recursos Humanos"
+}
+
+###
+
+### RF-02-09 | Verificar estado Revoked (irreversible)
+GET {{baseUrl}}/api/credentials/CARD-BLK-002
+Accept: {{contentType}}
+
+###
+
+### ────────────────────────────────────────────────────────────
+###  RF-03 | Registro de entradas y salidas
+### ────────────────────────────────────────────────────────────
+### Reemplazar con el ID real del punto de acceso REC-01
+@accessPointRecepcionId = 00000000-0000-0000-0000-000000000004
+
+### RF-03-01 | CASO AUTORIZADO
+### Condición: Empleado activo + Credencial activa + Punto habilitado
+### Resultado esperado: 200 OK, AccessResult = "Authorized", RejectionReason = null
+POST {{baseUrl}}/api/access/movements
+Content-Type: {{contentType}}
+
+{
+  "credentialCode": "CARD-ACT-001",
+  "accessPointId": "{{accessPointRecepcionId}}",
+  "movementType": "Entry"
+}
+
+###
+
+### RF-03-02 | CASO RECHAZADO: Empleado Inactivo
+### Credencial CARD-INA-004 está asignada a María López (estado Inactive)
+### Resultado esperado: 200 OK, AccessResult = "Rejected", RejectionReason contiene "inactivo"
+POST {{baseUrl}}/api/access/movements
+Content-Type: {{contentType}}
+
+{
+  "credentialCode": "CARD-INA-004",
+  "accessPointId": "{{accessPointRecepcionId}}",
+  "movementType": "Entry"
+}
+
+###
+
+### RF-03-03 | CASO RECHAZADO: Credencial Bloqueada
+### Credencial CARD-BLK-002 está en estado Blocked (bloquear primero con RF-02-06)
+### Resultado esperado: 200 OK, AccessResult = "Rejected", RejectionReason contiene "Credencial"
+POST {{baseUrl}}/api/access/movements
+Content-Type: {{contentType}}
+
+{
+  "credentialCode": "CARD-BLK-002",
+  "accessPointId": "{{accessPointRecepcionId}}",
+  "movementType": "Entry"
+}
+
+###
+
+### RF-03-04 | CASO RECHAZADO: Punto de Acceso Inhabilitado
+### Punto BOD-01 está deshabilitado (deshabilitar primero con RF-06-05)
+### Resultado esperado: 200 OK, AccessResult = "Rejected", RejectionReason contiene "deshabilitado"
+POST {{baseUrl}}/api/access/movements
+Content-Type: {{contentType}}
+
+{
+  "credentialCode": "CARD-ACT-001",
+  "accessPointId": "{{accessPointBodegaId}}",
+  "movementType": "Entry"
+}
+
+###
+
+### RF-03-05 | Registrar salida autorizada (Exit)
+### Resultado esperado: 200 OK, AccessResult = "Authorized", MovementType = "Exit"
+POST {{baseUrl}}/api/access/movements
+Content-Type: {{contentType}}
+
+{
+  "credentialCode": "CARD-ACT-001",
+  "accessPointId": "{{accessPointRecepcionId}}",
+  "movementType": "Exit"
+}
+
+###
+
+### ────────────────────────────────────────────────────────────
+###  RF-04 | Consulta paginada del historial de accesos
+### ────────────────────────────────────────────────────────────
+
+### RF-04-01 | Historial completo — primera página
+GET {{baseUrl}}/api/access/history?pageNumber=1&pageSize=10
+Accept: {{contentType}}
+
+###
+
+### RF-04-02 | Filtrar solo accesos AUTORIZADOS
+GET {{baseUrl}}/api/access/history?accessResult=Authorized&pageNumber=1&pageSize=10
+Accept: {{contentType}}
+
+###
+
+### RF-04-03 | Filtrar solo accesos RECHAZADOS
+GET {{baseUrl}}/api/access/history?accessResult=Rejected&pageNumber=1&pageSize=10
+Accept: {{contentType}}
+
+###
+
+### RF-04-04 | Filtrar historial por empleado (Juan Pérez)
+GET {{baseUrl}}/api/access/history?employeeId={{employeeJuanId}}&pageNumber=1&pageSize=10
+Accept: {{contentType}}
+
+###
+
+### RF-04-05 | Filtrar historial por punto de acceso
+GET {{baseUrl}}/api/access/history?accessPointId={{accessPointRecepcionId}}&pageNumber=1&pageSize=10
+Accept: {{contentType}}
+
+###
+
+### RF-04-06 | Filtrar por rango de fechas (ajustar al día de ejecución)
+GET {{baseUrl}}/api/access/history?fromDate=2026-10-26T00:00:00Z&toDate=2026-10-26T23:59:59Z&pageNumber=1&pageSize=20
+Accept: {{contentType}}
+
+###
+
+### RF-04-07 | Todos los filtros combinados
+GET {{baseUrl}}/api/access/history?employeeId={{employeeJuanId}}&accessResult=Authorized&fromDate=2026-10-26T00:00:00Z&toDate=2026-10-27T23:59:59Z&pageNumber=1&pageSize=5
+Accept: {{contentType}}
+
+###
+
+### RF-04-08 | Segunda página (paginación)
+GET {{baseUrl}}/api/access/history?pageNumber=2&pageSize=5
+Accept: {{contentType}}
+
+###
+
+### ────────────────────────────────────────────────────────────
+###  Casos de error — Validación RFC 7807 ProblemDetails
+### ────────────────────────────────────────────────────────────
+
+### ERR-01 | Email inválido → 400 Bad Request con errores por campo
+POST {{baseUrl}}/api/employees
+Content-Type: {{contentType}}
+
+{
+  "documentNumber": "99999999",
+  "firstName": "Test",
+  "lastName": "Error",
+  "email": "no-es-un-email",
+  "jobTitle": "QA",
+  "department": "TI"
+}
+
+###
+
+### ERR-02 | Empleado inexistente → 404 Not Found
+GET {{baseUrl}}/api/employees/00000000-0000-0000-0000-000000000000
+Accept: {{contentType}}
+
+###
+
+### ERR-03 | Desactivar empleado ya inactivo → 422 Unprocessable Entity
+PATCH {{baseUrl}}/api/employees/{{employeeMariaId}}/deactivate
+
+###
+
+### ERR-04 | Revocar credencial ya revocada → 422 Unprocessable Entity
+PATCH {{baseUrl}}/api/credentials/CARD-BLK-002/revoke
+Content-Type: {{contentType}}
+
+{
+  "reason": "Intento duplicado"
+}
+
+###
